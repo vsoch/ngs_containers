@@ -1,4 +1,4 @@
-BootStrap: debootstrap
+BootStrap:debootstrap
 OSVersion: xenial
 MirrorURL: http://de.archive.ubuntu.com/ubuntu/
 
@@ -6,54 +6,212 @@ MirrorURL: http://de.archive.ubuntu.com/ubuntu/
 %runscript
 	echo "This is what happens when you run the container..."
 
+
+
 %files 
 
 %labels 
   AUTHOR Julien
 
+
 %post
 
-  sed -i 's/$/ universe/' /etc/apt/sources.list
+sed -i 's/$/ universe/' /etc/apt/sources.list
 
-  apt-get -y update
-  apt-get -y install build-essential perl zlib1g-dev libboost1.58-dev libgsl-dev libsuitesparse-dev liblpsolve55-dev gcc wget language-pack-de language-pack-en cpanminus libboost-dev libsqlite3-dev libboost-graph-dev sqlite3 bamtools libbamtools-dev
-  apt-get -y install libboost-iostreams-dev libglib2.0-dev libncurses5-dev libncursesw5-dev bzip2  libbz2-dev liblzma-dev
-  apt-get update && apt-get -y install python python3 git wget
+apt-get -y update
+apt-get -y install build-essential perl zlib1g-dev libboost1.58-dev libgsl-dev libsuitesparse-dev liblpsolve55-dev gcc wget language-pack-de language-pack-en cpanminus libboost-dev libsqlite3-dev libboost-graph-dev sqlite3 bamtools libbamtools-dev
+apt-get -y install libboost-iostreams-dev libglib2.0-dev libncurses5-dev libncursesw5-dev bzip2  libbz2-dev liblzma-dev 
+apt-get -y install python python3 git wget rsync
 
 locale-gen en_US en_US.UTF-8 de_DE.UTF-8 de_DE
 
-mkdir -p tools bin
+mkdir -p /opt
+
+
+#### Proovreads PacBio hybrid error correction #######
+###### through iterative short read consensus ########
+echo "Installing proovreads..."
+cd /opt 
+git clone https://github.com/BioInf-Wuerzburg/proovread.git
+cd proovread && make && make install PREFIX=/opt/proovreads
+
 
 #### Install Canu ####
 echo "Installing CANU ..."
 version="1.7"
-  cd /tools
+  cd /opt
   wget -N https://github.com/marbl/canu/releases/download/v$ver/canu-$ver.Linux-amd64.tar.xz
   xz -dc canu-$ver.*.tar.xz |tar -xf -
-  mv canu-$ver/Linux-amd64/bin /usr/local/bin/canu
- echo 'export PATH=$PATH:/tools/canu/bin' >> /environment
- rm canu-$ver -rf
+  #mv canu-$ver/Linux-amd64/bin /usr/local/bin/canu
+
+ rm canu-$ver.*.tar.xz -rf
 
 
 ### Install Allpath-LG ####
 echo "Installing ALLPATH-LG ..."
-cd /tools
+cd /opt
 wget ftp://ftp.broadinstitute.org/pub/crd/ALLPATHS/Release-LG/latest_source_code/allpathslg-52488.tar.gz
  tar -zxvf allpathslg-52488.tar.gz
  mv allpathslg-52488 allpathslg
- cd allpathslg/ && ./configure --/prefix=/tools
+ cd allpathslg/ && ./configure --/prefix=/opt/allpathslg
  make && make install 
- echo 'export PATH="$PATH:/tools/allpathslg/bin' >> /environment
 
-rm allpathslg -rf
-
-%environment
+rm allpathslg-52488.tar.gz
 
 
+# Samtools
+echo "Installing Samtools"
+cd /opt
+mkdir -p /opt/samtools
+cd /opt/samtools
+wget https://github.com/samtools/samtools/releases/download/1.5/samtools-1.5.tar.bz2
+tar -xvf samtools-1.5.tar.bz2
+rm samtools-1.5.tar.bz2
+cd samtools-1.5
+./configure --prefix=/opt/samtools/1.5
+make -j4  && make install
+cd ..
+rm -Rf samtools-1.5
 
-#### Install Falcon ###
+echo "Installing Exonerate"
+cd /opt
+mkdir exonerate
+cd exonerate
+wget http://ftp.ebi.ac.uk/pub/software/vertebrategenomics/exonerate/exonerate-2.2.0-x86_64.tar.gz
+tar -xvf exonerate-2.2.0-x86_64.tar.gz
+mv exonerate-2.2.0-x86_64 2.2.0
+rm exonerate-2.2.0-x86_64.tar.gz
 
+echo "Installing Blast+"
+cd /opt
+mkdir blast+
+cd blast+
+wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.2.28/ncbi-blast-2.2.28+-x64-linux.tar.gz
+tar -xvf ncbi-blast-2.2.28+-x64-linux.tar.gz
+mv ncbi-blast-2.2.28+ 2.2.28
+rm ncbi-blast-2.2.28+-x64-linux.tar.gz
 
+echo "Installing RMBlast"
+cd /opt
+mkdir rmblast+
+cd rmblast+
+wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/rmblast/2.2.28/ncbi-rmblastn-2.2.28-x64-linux.tar.gz
+tar -xvf ncbi-rmblastn-2.2.28-x64-linux.tar.gz
+mv ncbi-rmblastn-2.2.28 2.2.28
+rm ncbi-rmblastn-2.2.28-x64-linux.tar.gz
 
+echo "Installing TRF"
+cd /opt
+mkdir trf
+cd trf
+mkdir 4.09
+cd 4.09
+wget https://www.dropbox.com/s/karvisxlohflok8/trf?dl=0
+mv trf\?dl\=0 trf
+chmod +x trf
 
+echo "Installing RepeatMasker"
+cd /opt
+mkdir repeatmasker
+cd repeatmasker
+wget http://www.repeatmasker.org/RepeatMasker-open-4-0-7.tar.gz
+tar -xvf RepeatMasker-open-4-0-7.tar.gz
+mv RepeatMasker 4.0.7
+cd 4.0.7
+wget https://www.dropbox.com/s/tzmr8plbqu3jg1l/repeatmaskerlibraries-20160829.tar.gz?dl=0
+tar -xvf repeatmaskerlibraries-20160829.tar.gz?dl=0
+rm repeatmaskerlibraries-20160829.tar.gz?dl=0
+cd Libraries
+rm Dfam.hmm*
+wget http://dfam.org/web_download/Release/Dfam_2.0/Dfam.hmm.gz
+gunzip Dfam.hmm.gz
+cd ..
+cd ..
+rm RepeatMasker-open-4-0-7.tar.gz
 
+echo "Installing BioPerl"
+cpanm -q -i Module::Build
+cpanm -q -i Bundle::BioPerl
+
+echo "Installing addiitional Perl libraries"
+cpanm -q -i DBI DBD::SQLite forks forks::shared File::Which Perl::Unsafe::Signals Bit::Vector Inline::C IO::All IO::Prompt Bio::Root::Version LWP::Simple Text::Soundex
+
+echo "Installing Augustus"
+cd /opt
+mkdir augustus
+cd augustus
+wget http://bioinf.uni-greifswald.de/augustus/binaries/old/augustus-3.2.2.tar.gz
+tar -xvf augustus-3.2.2.tar.gz
+rm augustus-3.2.2.tar.gz
+mv augustus-3.2.2 3.2.2
+cd 3.2.2
+sed -i.bak 's/\#COMPGENEPRED/COMPGENEPRED/' common.mk
+sed -i.bak 's/\#SQLITE/SQLITE/' common.mk
+make -j4
+
+echo "Installing SNAP"
+cd /opt
+mkdir snap
+cd snap
+wget http://korflab.ucdavis.edu/Software/snap-2013-11-29.tar.gz
+tar -xvf snap-2013-11-29.tar.gz
+rm snap-2013-11-29.tar.gz
+mv snap 2013-11-29
+cd 2013-11-29
+make -j4
+cd
+
+echo "Installing OpenMPI"
+cd /opt
+mkdir openmpi
+cd openmpi
+wget http://www.open-mpi.de/software/ompi/v2.1/downloads/openmpi-2.1.0.tar.gz
+tar -xvf openmpi-2.1.0.tar.gz
+cd openmpi-2.1.0
+./configure
+make -j8
+make install
+cd /opt
+rm -Rf openmpi
+
+echo "Installing Maker 3.0"
+cd /opt
+mkdir maker
+cd maker
+wget https://www.dropbox.com/s/ylbpa3l1f21lpq6/maker-3.00.0-beta.tgz?dl=0
+tar -xvf maker-3.00.0-beta.tgz?dl=0
+mv maker 3.0
+rm maker-3.00.0-beta.tgz?dl=0
+cd 3.0/src
+perl Build.PL
+./Build install
+
+# Setting ENV variables
+echo 'export PATH=$PATH:/opt/samtools/1.5/bin' >> /environment
+echo 'export PATH=$PATH:/opt/exonerate/2.2.0/bin' >> /environment
+echo 'export PATH=$PATH:/opt/blast+/2.2.28/bin' >> /environment
+echo 'export PATH=$PATH:/opt/maker/3.0/bin' >> /environment
+echo 'export PATH=$PATH:/opt/rmblast+/2.2.28/bin' >> /environment
+echo 'export PATH=$PATH:/opt/trf/4.09' >> /environment
+echo 'export PATH=$PATH:/opt/repeatmasker/4.0.7' >> /environment
+echo 'export PATH=$PATH:/opt/augustus/3.2.2/bin' >> /environment
+echo 'export PATH=$PATH:/opt/augustus/3.2.2/scripts' >> /environment
+echo 'export PATH=$PATH:/opt/augustus/3.2.2/auxprogs/filterBam' >> /environment
+echo 'export PATH=$PATH:/opt/augustus/3.2.2/auxprogs/bam2hints' >> /environment
+echo 'export AUGUSTUS_CONFIG_PATH=/opt/augustus/3.2.2/config' >> /environment
+echo 'export PATH=$PATH:/opt/snap/2013-11-29' >> /environment
+echo 'export ZOE=/opt/snap/2013-11-29' >> /environment
+echo "export OMPI_MCA_mpi_warn_on_fork=1" >> /environment
+echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib" >> /environment
+echo "export LD_PRELOAD=/usr/local/lib/libmpi.so" >> /environment
+echo "export PATH=$PATH:/tools/canu/bin" >> /environment
+echo "export PATH="$PATH:/opt/allpathslg/bin" >> /environment
+echo "export PATH="$PATH:/opt/proovreads/bin" >> /environment
+
+echo ""
+echo "----------------------------------------"
+echo "REMEMBER TO SET UP REPEATMASKER MANUALLY"
+echo "----------------------------------------"
+echo "singularity shell --writable my_image.img"
+echo "cd /opt/repeatmasker/4.0.7"
+echo "./configure"
